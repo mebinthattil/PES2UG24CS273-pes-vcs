@@ -134,6 +134,11 @@ static int compare_index_entries(const void *a, const void *b) {
     return strcmp(((const IndexEntry *)a)->path, ((const IndexEntry *)b)->path);
 }
 
+static int mode_from_stat(const struct stat *st) {
+    if (!S_ISREG(st->st_mode)) return -1;
+    return (st->st_mode & S_IXUSR) ? 0100755 : 0100644;
+}
+
 // Load the index from .pes/index.
 //
 // HINTS - Useful functions:
@@ -245,8 +250,38 @@ int index_save(const Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_add(Index *index, const char *path) {
-    // TODO: Implement file staging
-    // (See Lab Appendix for logical steps)
-    (void)index; (void)path;
+    if (!index || !path) return -1;
+
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+
+    int mode = mode_from_stat(&st);
+    if (mode < 0) return -1;
+
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
+    size_t len = (size_t)st.st_size;
+    void *data = malloc(len > 0 ? len : 1);
+    if (!data) {
+        fclose(f);
+        return -1;
+    }
+
+    if (len > 0 && fread(data, 1, len, f) != len) {
+        free(data);
+        fclose(f);
+        return -1;
+    }
+    fclose(f);
+
+    ObjectID hash;
+    int rc = object_write(OBJ_BLOB, data, len, &hash);
+    free(data);
+    if (rc != 0) return -1;
+
+    (void)mode;
+    (void)hash;
+    (void)st;
     return -1;
 }
