@@ -140,6 +140,17 @@ static int tree_has_entry(const Tree *tree, const char *name) {
     return 0;
 }
 
+static int write_tree_level(const Index *index, const char *prefix, ObjectID *id_out) {
+    Tree tree = {0};
+    size_t prefix_len = strlen(prefix);
+
+    (void)index;
+    (void)tree;
+    (void)prefix_len;
+    (void)id_out;
+    return -1;
+}
+
 int tree_from_index(ObjectID *id_out) {
     // TODO: Implement recursive tree building
     // (See Lab Appendix for logical steps)
