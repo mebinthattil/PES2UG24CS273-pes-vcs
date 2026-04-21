@@ -13,8 +13,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 #include <openssl/evp.h>
 
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
@@ -58,6 +60,33 @@ int object_exists(const ObjectID *id) {
     char path[512];
     object_path(id, path, sizeof(path));
     return access(path, F_OK) == 0;
+}
+
+static const char *object_type_name(ObjectType type) {
+    switch (type) {
+        case OBJ_BLOB:
+            return "blob";
+        case OBJ_TREE:
+            return "tree";
+        case OBJ_COMMIT:
+            return "commit";
+        default:
+            return NULL;
+    }
+}
+
+static int write_full(int fd, const void *buf, size_t len) {
+    const uint8_t *ptr = (const uint8_t *)buf;
+    while (len > 0) {
+        ssize_t written = write(fd, ptr, len);
+        if (written < 0) {
+            if (errno == EINTR) continue;
+            return -1;
+        }
+        ptr += (size_t)written;
+        len -= (size_t)written;
+    }
+    return 0;
 }
 
 // ─── TODO: Implement these ──────────────────────────────────────────────────
