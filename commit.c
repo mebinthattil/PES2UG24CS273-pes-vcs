@@ -197,6 +197,11 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     if (!message || !commit_id_out) return -1;
 
     Commit commit = {0};
-    (void)commit;
+    if (tree_from_index(&commit.tree) != 0) return -1;
+
+    if (head_read(&commit.parent) == 0) {
+        commit.has_parent = 1;
+    }
+
     return -1;
 }
