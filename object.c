@@ -129,7 +129,7 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     char header[64];
     int header_len = snprintf(header, sizeof(header), "%s %zu", type_name, len);
     if (header_len < 0 || (size_t)header_len + 1 > sizeof(header)) return -1;
-    header_len += 1;
+    header_len += 1; // include the '\0' separator
 
     size_t full_len = (size_t)header_len + len;
     uint8_t *full = malloc(full_len > 0 ? full_len : 1);
