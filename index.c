@@ -280,8 +280,17 @@ int index_add(Index *index, const char *path) {
     free(data);
     if (rc != 0) return -1;
 
-    (void)mode;
-    (void)hash;
-    (void)st;
-    return -1;
+    IndexEntry *entry = index_find(index, path);
+    if (!entry) {
+        if (index->count >= MAX_INDEX_ENTRIES) return -1;
+        entry = &index->entries[index->count++];
+    }
+
+    entry->mode = (uint32_t)mode;
+    entry->hash = hash;
+    entry->mtime_sec = (uint64_t)st.st_mtime;
+    entry->size = (uint32_t)st.st_size;
+    snprintf(entry->path, sizeof(entry->path), "%s", path);
+
+    return index_save(index);
 }
