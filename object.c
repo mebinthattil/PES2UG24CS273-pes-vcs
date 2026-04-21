@@ -144,8 +144,62 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         return 0;
     }
 
+    char final_path[512];
+    object_path(id_out, final_path, sizeof(final_path));
+
+    char dir_path[512];
+    snprintf(dir_path, sizeof(dir_path), "%s", final_path);
+    char *slash = strrchr(dir_path, '/');
+    if (!slash) {
+        free(full);
+        return -1;
+    }
+    *slash = '\0';
+
+    if (mkdir(dir_path, 0755) != 0 && errno != EEXIST) {
+        free(full);
+        return -1;
+    }
+
+    char tmp_path[640];
+    snprintf(tmp_path, sizeof(tmp_path), "%s/tmp-%ld-%ld", dir_path, (long)getpid(), (long)random());
+
+    int fd = open(tmp_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (fd < 0) {
+        free(full);
+        return -1;
+    }
+
+    int rc = 0;
+    if (write_full(fd, full, full_len) != 0) rc = -1;
+    if (rc == 0 && fsync(fd) != 0) rc = -1;
+    if (close(fd) != 0 && rc == 0) rc = -1;
     free(full);
-    return -1;
+
+    if (rc != 0) {
+        unlink(tmp_path);
+        return -1;
+    }
+
+    if (rename(tmp_path, final_path) != 0) {
+        if (errno == EEXIST || object_exists(id_out)) {
+            unlink(tmp_path);
+        } else {
+            unlink(tmp_path);
+            return -1;
+        }
+    }
+
+    int dir_fd = open(dir_path, O_RDONLY | O_DIRECTORY);
+    if (dir_fd >= 0) {
+        if (fsync(dir_fd) != 0) {
+            close(dir_fd);
+            return -1;
+        }
+        close(dir_fd);
+    }
+
+    return 0;
 }
 
 // Read an object from the store.
